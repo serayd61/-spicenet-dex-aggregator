@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spicenet DEX Aggregator - Best Cross-Chain Swap Rates</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body { 
+            background: linear-gradient(135deg, #e0f2fe 0%, #b3e5fc 50%, #81d4fa 100%);
+            font-family: 'Inter', system-ui, sans-serif;
+            color: #1e3a8a;
+        }
+        .trading-card { 
+            background: rgba(255, 255, 255, 0.95);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(59, 130, 246, 0.1);
+        }
+        .neon-border { 
+            box-shadow: 0 0 30px rgba(59, 130, 246, 0.4);
+        }
+        .price-diff-positive { color: #16a34a; }
+        .price-diff-negative { color: #dc2626; }
+        .chain-badge {
+            background: linear-gradient(45deg, #3b82f6, #1d4ed8);
+            border-radius: 20px;
+            padding: 4px 12px;
+            font-size: 12px;
+            color: white;
+            font-weight: 600;
+        }
+        .dex-logo {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .token-input {
+            background: rgba(255, 255, 255, 0.9);
+            border: 1px solid rgba(59, 130, 246, 0.4);
+            color: #1e3a8a;
+        }
+        .token-input:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+            background: white;
+        }
+        .swap-button {
+            background: linear-gradient(45deg, #3b82f6, #1d4ed8);
+            color: white;
+            transition: all 0.3s ease;
+        }
+        .swap-button:hover {
+            background: linear-gradient(45deg, #2563eb, #1e40af);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(59, 130, 246, 0.4);
+        }
+        .route-card {
+            background: rgba(255, 255, 255, 0.8);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            transition: all 0.3s ease;
+        }
+        .route-card:hover {
+            border-color: #3b82f6;
+            background: rgba(255, 255, 255, 0.95);
+            box-shadow: 0 4px 20px rgba(59, 130, 246, 0.2);
+        }
+        .best-route {
+            border: 2px solid #16a34a;
+            background: rgba(16, 185, 129, 0.1);
+        }
+    </style>
+</head>
+<body class="min-h-screen text-blue-900">
+    <!-- Header -->
+    <div class="bg-white/90 backdrop-blur-sm border-b border-blue-300 shadow-lg">
+        <div class="max-w-7xl mx-auto px-6 py-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 bg-gradient-to-r from-blue-500 to-blue-700 rounded-lg flex items-center justify-center shadow-lg">
+                        <i class="fas fa-bolt text-white text-xl"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-2xl font-bold bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">
+                            Spicenet DEX Aggregator
+                        </h1>
+                        <p class="text-sm text-blue-600">Best cross-chain swap rates in milliseconds</p>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <div class="chain-badge">Multi-Chain</div>
+                    <div class="text-green-600 text-sm font-medium">
+                        <i class="fas fa-circle text-xs mr-1"></i>
+                        Live
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="max-w-7xl mx-auto px-6 py-8">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            
+            <!-- Trading Interface -->
+            <div class="lg:col-span-2">
+                <div class="trading-card rounded-xl p-6 neon-border">
+                    <div class="flex items-center justify-between mb-6">
+                        <h2 class="text-xl font-bold text-blue-600">Swap Interface</h2>
+                        <div class="flex items-center space-x-2">
+                            <i class="fas fa-cog text-blue-500 cursor-pointer hover:text-blue-600"></i>
+                            <span class="text-sm text-blue-600">Slippage: 0.5%</span>
+                        </div>
+                    </div>
+
+                    <!-- From Token -->
+                    <div class="space-y-4">
+                        <div class="trading-card rounded-lg p-4">
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="text-sm text-blue-600">From</span>
+                                <span class="text-sm text-blue-500">Balance: 0.0000</span>
+                            </div>
+                            <div class="flex items-center space-x-4">
+                                <select class="token-input rounded-lg px-3 py-2 w-32" id="fromToken">
+                                    <option value="ETH">ETH</option>
+                                    <option value="USDC">USDC</option>
+                                    <option value="USDT">USDT</option>
+                                    <option value="BTC">WBTC</option>
+                                </select>
+                                <input type="number" placeholder="0.0" class="token-input rounded-lg px-4 py-2 flex-1 text-right" id="fromAmount">
+                                <button class="text-blue-500 text-sm hover:text-blue-600 font-medium">MAX</button>
+                            </div>
+                            <div class="flex items-center justify-between mt-2">
+                                <span class="text-xs text-gray-500">≈ $0.00</span>
+                                <select class="chain-badge text-xs" id="fromChain">
+                                    <option>Ethereum</option>
+                                    <option>Optimism</option>
+                                    <option>Base</option>
+                                    <option>Arbitrum</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Swap Arrow -->
+                        <div class="flex justify-center">
+                            <button class="w-10 h-10 bg-slate-700 hover:bg-slate-600 rounded-full flex items-center justify-center transition-all duration-300 hover:rotate-180" id="swapTokens">
+                                <i class="fas fa-arrow-down text-blue-400"></i>
+                            </button>
+                        </div>
+
+                        <!-- To Token -->
+                        <div class="trading-card rounded-lg p-4">
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="text-sm text-gray-400">To</span>
+                                <span class="text-sm text-gray-400">Balance: 0.0000</span>
+                            </div>
+                            <div class="flex items-center space-x-4">
+                                <select class="token-input rounded-lg px-3 py-2 w-32" id="toToken">
+                                    <option value="USDC">USDC</option>
+                                    <option value="ETH">ETH</option>
+                                    <option value="USDT">USDT</option>
+                                    <option value="BTC">WBTC</option>
+                                </select>
+                                <input type="number" placeholder="0.0" class="token-input rounded-lg px-4 py-2 flex-1 text-right" id="toAmount" readonly>
+                            </div>
+                            <div class="flex items-center justify-between mt-2">
+                                <span class="text-xs text-gray-500" id="toUsdValue">≈ $0.00</span>
+                                <select class="chain-badge text-xs" id="toChain">
+                                    <option>Ethereum</option>
+                                    <option>Optimism</option>
+                                    <option>Base</option>
+                                    <option>Arbitrum</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Swap Button -->
+                        <button class="swap-button w-full py-4 rounded-lg font-semibold text-lg" id="swapButton">
+                            Find Best Route
+                        </button>
+
+                        <!-- Transaction Details -->
+                        <div class="trading-card rounded-lg p-4" id="transactionDetails" style="display: none;">
+                            <div class="flex justify-between items-center mb-3">
+                                <span class="text-sm text-gray-400">Transaction Details</span>
+                                <i class="fas fa-chevron-down text-gray-400 cursor-pointer"></i>
+                            </div>
+                            <div class="space-y-2 text-sm">
+                                <div class="flex justify-between">
+                                    <span class="text-gray-400">Minimum received:</span>
+                                    <span id="minReceived">-</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-400">Price impact:</span>
+                                    <span id="priceImpact" class="text-green-400">-</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-400">Network fee:</span>
+                                    <span id="networkFee">-</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-400">Route:</span>
+                                    <span id="routePath" class="text-blue-400">-</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Routes & Statistics -->
+            <div class="space-y-6">
+                <!-- Best Routes -->
+                <div class="trading-card rounded-xl p-6">
+                    <h3 class="text-lg font-semibold text-blue-400 mb-4">
+                        <i class="fas fa-route mr-2"></i>Best Routes
+                    </h3>
+                    <div class="space-y-3" id="routesList">
+                        <div class="route-card best-route rounded-lg p-4">
+                            <div class="flex items-center justify-between mb-2">
+                                <div class="flex items-center space-x-2">
+                                    <div class="dex-logo bg-pink-500">U</div>
+                                    <span class="text-sm font-medium">Uniswap V3</span>
+                                    <span class="text-xs text-green-400">BEST</span>
+                                </div>
+                                <div class="text-right">
+                                    <div class="text-sm font-semibold">1.2547 ETH</div>
+                                    <div class="text-xs text-gray-400">$2,847.32</div>
+                                </div>
+                            </div>
+                            <div class="flex justify-between text-xs">
+                                <span class="text-gray-400">Gas: $12.34</span>
+                                <span class="text-green-400">+$3.21 vs worst</span>
+                            </div>
+                        </div>
+
+                        <div class="route-card rounded-lg p-4">
+                            <div class="flex items-center justify-between mb-2">
+                                <div class="flex items-center space-x-2">
+                                    <div class="dex-logo bg-blue-500">S</div>
+                                    <span class="text-sm font-medium">SushiSwap</span>
+                                </div>
+                                <div class="text-right">
+                                    <div class="text-sm font-semibold">1.2532 ETH</div>
+                                    <div class="text-xs text-gray-400">$2,844.01</div>
+                                </div>
+                            </div>
+                            <div class="flex justify-between text-xs">
+                                <span class="text-gray-400">Gas: $11.89</span>
+                                <span class="text-gray-400">-$0.10 vs best</span>
+                            </div>
+                        </div>
+
+                        <div class="route-card rounded-lg p-4">
+                            <div class="flex items-center justify-between mb-2">
+                                <div class="flex items-center space-x-2">
+                                    <div class="dex-logo bg-purple-500">1</div>
+                                    <span class="text-sm font-medium">1inch</span>
+                                </div>
+                                <div class="text-right">
+                                    <div class="text-sm font-semibold">1.2519 ETH</div>
+                                    <div class="text-xs text-gray-400">$2,841.12</div>
+                                </div>
+                            </div>
+                            <div class="flex justify-between text-xs">
+                                <span class="text-gray-400">Gas: $13.21</span>
+                                <span class="text-red-400">-$6.20 vs best</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Price Chart -->
+                <div class="trading-card rounded-xl p-6">
+                    <h3 class="text-lg font-semibold text-blue-400 mb-4">
+                        <i class="fas fa-chart-line mr-2"></i>Price Chart
+                    </h3>
+                    <div class="h-48">
+                        <canvas id="priceChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Network Status -->
+                <div class="trading-card rounded-xl p-6">
+                    <h3 class="text-lg font-semibold text-blue-400 mb-4">
+                        <i class="fas fa-network-wired mr-2"></i>Network Status
+                    </h3>
+                    <div class="space-y-3">
+                        <div class="flex justify-between items-center">
+                            <div class="flex items-center space-x-2">
+                                <div class="w-2 h-2 bg-green-400 rounded-full"></div>
+                                <span class="text-sm">Ethereum</span>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-sm">⛽ 23 gwei</div>
+                                <div class="text-xs text-gray-400">Fast</div>
+                            </div>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <div class="flex items-center space-x-2">
+                                <div class="w-2 h-2 bg-green-400 rounded-full"></div>
+                                <span class="text-sm">Optimism</span>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-sm">⛽ 0.001 ETH</div>
+                                <div class="text-xs text-gray-400">Fast</div>
+                            </div>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <div class="flex items-center space-x-2">
+                                <div class="w-2 h-2 bg-green-400 rounded-full"></div>
+                                <span class="text-sm">Base</span>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-sm">⛽ 0.002 ETH</div>
+                                <div class="text-xs text-gray-400">Fast</div>
+                            </div>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <div class="flex items-center space-x-2">
+                                <div class="w-2 h-2 bg-yellow-400 rounded-full"></div>
+                                <span class="text-sm">Arbitrum</span>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-sm">⛽ 0.003 ETH</div>
+                                <div class="text-xs text-gray-400">Medium</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Statistics Row -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mt-8">
+            <div class="trading-card rounded-xl p-6 text-center">
+                <div class="text-3xl font-bold text-blue-400" id="totalVolume">$2.4B</div>
+                <div class="text-sm text-gray-400 mt-1">24h Volume</div>
+                <div class="text-xs text-green-400 mt-2">+12.3% ↗</div>
+            </div>
+            <div class="trading-card rounded-xl p-6 text-center">
+                <div class="text-3xl font-bold text-green-400" id="bestSavings">$847</div>
+                <div class="text-sm text-gray-400 mt-1">Avg. Savings</div>
+                <div class="text-xs text-green-400 mt-2">Per swap</div>
+            </div>
+            <div class="trading-card rounded-xl p-6 text-center">
+                <div class="text-3xl font-bold text-purple-400" id="totalSwaps">15.2K</div>
+                <div class="text-sm text-gray-400 mt-1">Total Swaps</div>
+                <div class="text-xs text-green-400 mt-2">Today</div>
+            </div>
+            <div class="trading-card rounded-xl p-6 text-center">
+                <div class="text-3xl font-bold text-yellow-400" id="avgTime">0.8s</div>
+                <div class="text-sm text-gray-400 mt-1">Avg. Time</div>
+                <div class="text-xs text-blue-400 mt-2">⚡ Spicenet powered</div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="mt-12 text-center">
+            <div class="inline-flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-blue-600/20 to-purple-600/20 rounded-full border border-blue-500/30">
+                <i class="fas fa-bolt text-blue-400"></i>
+                <span class="text-sm font-medium bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+                    Powered by Spicenet Omni-Composable Technology
+                </span>
+            </div>
+            <p class="text-xs text-gray-500 mt-3">Built for Spicenet Airdrop Campaign | serayd61</p>
+        </div>
+    </div>
+
+    <script>
+        // Token prices (demo data)
+        const tokenPrices = {
+            'ETH': 2247.85,
+            'USDC': 1.00,
+            'USDT': 0.999,
+            'BTC': 42187.50
+        };
+
+        // DEX data
+        const dexData = [
+            { name: 'Uniswap V3', logo: 'U', color: 'bg-pink-500', rate: 1.0234, gas: 12.34 },
+            { name: 'SushiSwap', logo: 'S', color: 'bg-blue-500', rate: 1.0219, gas: 11.89 },
+            { name: '1inch', logo: '1', color: 'bg-purple-500', rate: 1.0206, gas: 13.21 },
+            { name: 'Velodrome', logo: 'V', color: 'bg-green-500', rate: 1.0198, gas: 10.95 },
+            { name: 'Aerodrome', logo: 'A', color: 'bg-yellow-500', rate: 1.0187, gas: 11.43 }
+        ];
+
+        // Update calculations
+        function updateCalculations() {
+            const fromToken = document.getElementById('fromToken').value;
+            const toToken = document.getElementById('toToken').value;
+            const fromAmount = parseFloat(document.getElementById('fromAmount').value) || 0;
+            
+            if (fromAmount > 0) {
+                const fromPrice = tokenPrices[fromToken];
+                const toPrice = tokenPrices[toToken];
+                const exchangeRate = fromPrice / toPrice;
+                const toAmount = (fromAmount * exchangeRate).toFixed(6);
+                
+                document.getElementById('toAmount').value = toAmount;
+                document.getElementById('toUsdValue').textContent = `≈ $${(parseFloat(toAmount) * toPrice).toLocaleString()}`;
+                
+                // Show transaction details
+                document.getElementById('transactionDetails').style.display = 'block';
+                document.getElementById('minReceived').textContent = `${(parseFloat(toAmount) * 0.995).toFixed(6)} ${toToken}`;
+                document.getElementById('priceImpact').textContent = '0.12%';
+                document.getElementById('networkFee').textContent = '$12.34';
+                document.getElementById('routePath').textContent = `${fromToken} → ${toToken}`;
+            }
+        }
+
+        // Swap tokens
+        document.getElementById('swapTokens').addEventListener('click', function() {
+            const fromToken = document.getElementById('fromToken');
+            const toToken = document.getElementById('toToken');
+            const fromAmount = document.getElementById('fromAmount');
+            const toAmount = document.getElementById('toAmount');
+            
+            [fromToken.value, toToken.value] = [toToken.value, fromToken.value];
+            [fromAmount.value, toAmount.value] = [toAmount.value, fromAmount.value];
+            
+            updateCalculations();
+        });
+
+        // Event listeners
+        document.getElementById('fromAmount').addEventListener('input', updateCalculations);
+        document.getElementById('fromToken').addEventListener('change', updateCalculations);
+        document.getElementById('toToken').addEventListener('change', updateCalculations);
+
+        // Swap button
+        document.getElementById('swapButton').addEventListener('click', function() {
+            this.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Finding Routes...';
+            
+            setTimeout(() => {
+                this.innerHTML = '<i class="fas fa-check mr-2"></i>Routes Found!';
+                this.style.background = 'linear-gradient(45deg, #10b981, #059669)';
+                
+                setTimeout(() => {
+                    this.innerHTML = 'Execute Swap';
+                    this.style.background = 'linear-gradient(45deg, #3b82f6, #6366f1)';
+                }, 2000);
+            }, 1500);
+        });
+
+        // Price Chart
+        const priceCtx = document.getElementById('priceChart').getContext('2d');
+        const priceData = Array.from({ length: 24 }, (_, i) => ({
+            x: i,
+            y: 2247 + Math.random() * 50 - 25
+        }));
+
+        new Chart(priceCtx, {
+            type: 'line',
+            data: {
+                datasets: [{
+                    label: 'ETH Price',
+                    data: priceData,
+                    borderColor: '#3b82f6',
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    x: {
+                        display: false
+                    },
+                    y: {
+                        display: false
+                    }
+                },
+                elements: {
+                    line: {
+                        borderWidth: 2
+                    }
+                }
+            }
+        });
+
+        // Animate statistics
+        function animateValue(id, start, end, duration) {
+            const obj = document.getElementById(id);
+            const range = end - start;
+            const increment = end > start ? 1 : -1;
+            const stepTime = Math.abs(Math.floor(duration / range));
+            let current = start;
+            
+            const timer = setInterval(function() {
+                current += increment;
+                if (id === 'totalVolume') {
+                    obj.textContent = `$${(current / 1000).toFixed(1)}B`;
+                } else if (id === 'bestSavings') {
+                    obj.textContent = `$${current}`;
+                } else if (id === 'totalSwaps') {
+                    obj.textContent = `${(current / 1000).toFixed(1)}K`;
+                } else if (id === 'avgTime') {
+                    obj.textContent = `${(current / 10).toFixed(1)}s`;
+                }
+                
+                if (current === end) {
+                    clearInterval(timer);
+                }
+            }, stepTime);
+        }
+
+        // Animate on load
+        window.addEventListener('load', function() {
+            animateValue('totalVolume', 0, 2400, 2000);
+            animateValue('bestSavings', 0, 847, 2000);
+            animateValue('totalSwaps', 0, 15200, 2000);
+            animateValue('avgTime', 0, 8, 2000);
+        });
+
+        // Real-time updates simulation
+        setInterval(function() {
+            // Update prices slightly
+            Object.keys(tokenPrices).forEach(token => {
+                tokenPrices[token] *= (1 + (Math.random() - 0.5) * 0.001);
+            });
+            
+            // Update calculations if form has values
+            if (document.getElementById('fromAmount').value) {
+                updateCalculations();
+            }
+        }, 5000);
+    </script>
+</body>
+</html>
